@@ -2,10 +2,11 @@ package assigner
 
 import (
 	"fmt"
+	"math/rand"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"math/rand"
 )
 
 type Assigner struct {
@@ -23,8 +24,8 @@ func (a *Assigner) hasAssociatedAddress(instanceId string) (bool, error) {
 	result, err := a.ec2Svc.DescribeAddresses(&ec2.DescribeAddressesInput{
 		Filters: []*ec2.Filter{
 			{
-				Name: aws.String("instance-id"),
-				Values: []*string{ aws.String(instanceId) },
+				Name:   aws.String("instance-id"),
+				Values: []*string{aws.String(instanceId)},
 			},
 		},
 	})
@@ -46,8 +47,8 @@ func (a *Assigner) getUnassociatedAddresses(key string, value string) ([]*ec2.Ad
 	result, err := a.ec2Svc.DescribeAddresses(&ec2.DescribeAddressesInput{
 		Filters: []*ec2.Filter{
 			{
-				Name: aws.String("tag:" + key),
-				Values: []*string{ aws.String(value) },
+				Name:   aws.String("tag:" + key),
+				Values: []*string{aws.String(value)},
 			},
 		},
 	})
@@ -73,9 +74,9 @@ func (a *Assigner) getUnassociatedAddresses(key string, value string) ([]*ec2.Ad
 
 func (a *Assigner) associateAddress(instanceId string, address *ec2.Address) error {
 	_, err := a.ec2Svc.AssociateAddress(&ec2.AssociateAddressInput{
-		InstanceId: aws.String(instanceId),
+		InstanceId:         aws.String(instanceId),
 		AllowReassociation: aws.Bool(false),
-		AllocationId: address.AllocationId,
+		AllocationId:       address.AllocationId,
 	})
 
 	if err != nil {
@@ -85,30 +86,40 @@ func (a *Assigner) associateAddress(instanceId string, address *ec2.Address) err
 	return nil
 }
 
-func (a *Assigner) AssignEIPFromPoolUsingTags(instanceId string, key string, value string) error {
+func (a *Assigner) AssignEIPFromPoolUsingTags(instanceId string, key string, value string) (string, error) {
 	associated, err := a.hasAssociatedAddress(instanceId)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if associated {
-		return fmt.Errorf("instance %v is already associated with a EIP", instanceId)
+		return "", fmt.Errorf("instance %v is already associated with a EIP", instanceId)
 	}
 
 	addresses, err := a.getUnassociatedAddresses(key, value)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if len(addresses) <= 0 {
-		return fmt.Errorf("no EIPs available with tag of key/value: %v/%v", key, value)
+		return "", fmt.Errorf("no EIPs available with tag of key/value: %v/%v", key, value)
 	}
 
 	// len(addresses) > 1 then pick a random one to use from the list
-	err = a.associateAddress(instanceId, addresses[rand.Intn(len(addresses))])
+	address := addresses[rand.Intn(len(addresses))]
+	err = a.associateAddress(instanceId, address)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return fmtAddress(address), nil
+}
+
+func fmtAddress(addr *ec2.Address) string {
+	out := fmt.Sprintf("IP: %s, allocation id: %s",
+		aws.StringValue(addr.PublicIp), aws.StringValue(addr.AllocationId))
+	if addr.InstanceId != nil {
+		out += fmt.Sprintf(", instance-id: %s", *addr.InstanceId)
+	}
+	return out
 }

@@ -1,11 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
-
-	"flag"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
@@ -103,9 +102,11 @@ func main() {
 		os.Exit(8)
 	}
 
-	err = assignerSvc.AssignEIPFromPoolUsingTags(instanceId, tagKey, tagValue)
+	result, err := assignerSvc.AssignEIPFromPoolUsingTags(instanceId, tagKey, tagValue)
 	if err != nil {
 		log.Printf("Association failed: %v\n", err)
 		os.Exit(9)
 	}
+
+	fmt.Println(result)
 }
