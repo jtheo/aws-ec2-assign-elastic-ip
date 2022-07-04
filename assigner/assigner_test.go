@@ -1,19 +1,24 @@
 package assigner
 
 import (
-	"bitbucket.org/docevent/sfs-server/common"
+	"log"
+	"os"
+	"testing"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/sirupsen/logrus"
-	"testing"
 )
 
 var awsSession *session.Session
 var assigner *Assigner
 
 func TestConnect(t *testing.T) {
+	region := os.Getenv("AWS_DEFAULT_REGION")
+	if region == "" {
+		region = os.Getenv("AWS_DEFAULT_REGION")
+	}
 	s, err := session.NewSession(&aws.Config{
-		Region: aws.String(common.GetEnv("AWS_DEFAULT_REGION", "ap-southeast-2")),
+		Region: aws.String(region),
 	})
 	if err != nil {
 		t.Error("Failed to create AWS session", err)
@@ -54,7 +59,7 @@ func TestGetUnassociatedAddresses(t *testing.T) {
 		t.Errorf("Expected only 1 Address result, got %v results", len(result))
 	}
 
-	logrus.Print(result)
+	log.Println(result)
 }
 
 func TestAssociatingIPAddress(t *testing.T) {

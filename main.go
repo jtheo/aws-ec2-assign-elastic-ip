@@ -1,41 +1,54 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"os"
+
+	"flag"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/discobean/aws-ec2-assign-elastic-ip/assigner"
-	"github.com/namsral/flag"
-	"github.com/sirupsen/logrus"
-	"os"
+	"github.com/jtheo/aws-ec2-assign-elastic-ip/assigner"
 )
+
+var Version = "v0.0"
 
 func main() {
 	var tagKey string
 	var tagValue string
 	var instanceId string
 	var region string
+	var ver bool
 
-	flag.StringVar(&tagKey, "eiptagkey", "", "EIP Pool Tag Key (required)")
-	flag.StringVar(&tagValue, "eiptagvalue", "", "EIP Pool Tag Value (required)")
+	flag.StringVar(&tagKey, "tag-name", "", "EIP Pool Tag Key (required)")
+	flag.StringVar(&tagValue, "tag-value", "", "EIP Pool Tag Value (required)")
 	flag.StringVar(&instanceId, "instanceid", "", "Instance ID to set (optional, if empty use metadata service)")
 	flag.StringVar(&region, "region", "", "AWS Region (optional, if empty use metadata service)")
-
+	flag.BoolVar(&ver, "version", false, "show the version")
 	flag.Parse()
 
+	if ver {
+		fmt.Printf("aws-ec2-assign-elastic-ip version: %s\n", Version)
+		return
+	}
+
 	if tagKey == "" {
-		logrus.Errorf("eiptagkey required")
+		log.Println("tag-name required")
+		flag.Usage()
 		os.Exit(5)
 	}
 
 	if tagValue == "" {
-		logrus.Errorf("eiptagvalue required")
+		log.Println("tag-name required")
+		flag.Usage()
 		os.Exit(6)
 	}
 
 	awsSession, err := session.NewSession(&aws.Config{})
 	if err != nil {
-		logrus.Errorf("Failed to create AWS session: %v", err)
+		log.Printf("Failed to create AWS session: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -43,17 +56,17 @@ func main() {
 	if instanceId == "" {
 		metadataSvc := ec2metadata.New(awsSession)
 		if !metadataSvc.Available() {
-			logrus.Error("No instance metadata available")
+			log.Println("No instance metadata available")
 			os.Exit(2)
 		}
 
 		instanceIdentity, err := metadataSvc.GetInstanceIdentityDocument()
 		if err != nil {
-			logrus.Errorf("Failed to get instance identity document: %v", err)
+			log.Printf("Failed to get instance identity document: %v\n", err)
 			os.Exit(3)
 		}
 
-		logrus.Debugf("Got instance ID: %v", instanceIdentity.InstanceID)
+		log.Printf("Got instance ID: %v\n", instanceIdentity.InstanceID)
 		instanceId = instanceIdentity.InstanceID
 	}
 
@@ -61,17 +74,17 @@ func main() {
 	if region == "" {
 		metadataSvc := ec2metadata.New(awsSession)
 		if !metadataSvc.Available() {
-			logrus.Error("No instance metadata available")
+			log.Println("No instance metadata available")
 			os.Exit(2)
 		}
 
 		instanceIdentity, err := metadataSvc.GetInstanceIdentityDocument()
 		if err != nil {
-			logrus.Errorf("Failed to get instance identity document: %v", err)
+			log.Printf("Failed to get instance identity document: %v\n", err)
 			os.Exit(3)
 		}
 
-		logrus.Debugf("Got region: %v", instanceIdentity.Region)
+		log.Printf("Got region: %v\n", instanceIdentity.Region)
 		region = instanceIdentity.Region
 	}
 
@@ -80,20 +93,19 @@ func main() {
 		Region: aws.String(region),
 	})
 	if err != nil {
-		logrus.Errorf("Failed to create AWS session with region: %v", err)
+		log.Printf("Failed to create AWS session with region: %v\n", err)
 		os.Exit(7)
 	}
 
 	assignerSvc, err := assigner.New(awsSession)
 	if err != nil {
-		logrus.Errorf("Failed to create new EIP assigner: %v", err)
+		log.Printf("Failed to create new EIP assigner: %v\n", err)
 		os.Exit(8)
 	}
 
 	err = assignerSvc.AssignEIPFromPoolUsingTags(instanceId, tagKey, tagValue)
 	if err != nil {
-		logrus.Errorf("Association failed: %v", err)
+		log.Printf("Association failed: %v\n", err)
 		os.Exit(9)
 	}
 }
-
