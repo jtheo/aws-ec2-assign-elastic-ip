@@ -17,13 +17,13 @@ var Version = "v0.0"
 func main() {
 	var tagKey string
 	var tagValue string
-	var instanceId string
+	var instanceID string
 	var region string
 	var ver bool
 
 	flag.StringVar(&tagKey, "tag-name", "", "EIP Pool Tag Key (required)")
 	flag.StringVar(&tagValue, "tag-value", "", "EIP Pool Tag Value (required)")
-	flag.StringVar(&instanceId, "instanceid", "", "Instance ID to set (optional, if empty use metadata service)")
+	flag.StringVar(&instanceID, "instanceid", "", "Instance ID to set (optional, if empty use metadata service)")
 	flag.StringVar(&region, "region", "", "AWS Region (optional, if empty use metadata service)")
 	flag.BoolVar(&ver, "version", false, "show the version")
 	flag.Parse()
@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// get the instance ID information if not specified, using the metadata service
-	if instanceId == "" {
+	if instanceID == "" {
 		metadataSvc := ec2metadata.New(awsSession)
 		if !metadataSvc.Available() {
 			log.Println("No instance metadata available")
@@ -66,7 +66,7 @@ func main() {
 		}
 
 		log.Printf("Got instance ID: %v\n", instanceIdentity.InstanceID)
-		instanceId = instanceIdentity.InstanceID
+		instanceID = instanceIdentity.InstanceID
 	}
 
 	// get the region information if not specified, using the metadata service
@@ -102,7 +102,7 @@ func main() {
 		os.Exit(8)
 	}
 
-	result, err := assignerSvc.AssignEIPFromPoolUsingTags(instanceId, tagKey, tagValue)
+	result, err := assignerSvc.AssignEIPFromPoolUsingTags(instanceID, tagKey, tagValue)
 	if err != nil {
 		log.Printf("Association failed: %v\n", err)
 		os.Exit(9)

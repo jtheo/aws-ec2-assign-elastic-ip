@@ -20,6 +20,7 @@ func New(s *session.Session) (*Assigner, error) {
 	return a, nil
 }
 
+//revive:disable:var-naming
 func (a *Assigner) hasAssociatedAddress(instanceId string) (bool, error) {
 	result, err := a.ec2Svc.DescribeAddresses(&ec2.DescribeAddressesInput{
 		Filters: []*ec2.Filter{
@@ -29,7 +30,6 @@ func (a *Assigner) hasAssociatedAddress(instanceId string) (bool, error) {
 			},
 		},
 	})
-
 	if err != nil {
 		return false, err
 	}
@@ -78,7 +78,6 @@ func (a *Assigner) associateAddress(instanceId string, address *ec2.Address) err
 		AllowReassociation: aws.Bool(false),
 		AllocationId:       address.AllocationId,
 	})
-
 	if err != nil {
 		return err
 	}
@@ -106,7 +105,7 @@ func (a *Assigner) AssignEIPFromPoolUsingTags(instanceId string, key string, val
 	}
 
 	// len(addresses) > 1 then pick a random one to use from the list
-	address := addresses[rand.Intn(len(addresses))]
+	address := addresses[rand.Intn(len(addresses))] // #nosec G404
 	err = a.associateAddress(instanceId, address)
 	if err != nil {
 		return "", err

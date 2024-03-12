@@ -9,8 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 )
 
-var awsSession *session.Session
-var assigner *Assigner
+var (
+	awsSession *session.Session
+	assigner   *Assigner
+)
 
 func TestConnect(t *testing.T) {
 	region := os.Getenv("AWS_DEFAULT_REGION")
@@ -63,8 +65,7 @@ func TestGetUnassociatedAddresses(t *testing.T) {
 }
 
 func TestAssociatingIPAddress(t *testing.T) {
-	err := assigner.AssignEIPFromPoolUsingTags("i-0f0e97a20a05ce74b", "Application", "minecraft")
-
+	_, err := assigner.AssignEIPFromPoolUsingTags("i-0f0e97a20a05ce74b", "Application", "minecraft")
 	if err != nil {
 		t.Errorf("Failed to associate: %v", err)
 	}
